@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>معماری ابزارهای شبکه ابری — بنچمارک ۶ پرووایدر و پارس‌پک</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Vazirmatn Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Vazirmatn', system-ui, -apple-system, sans-serif;
+    }
+    body {
+      background-color: #f1f5f9;
+      color: #0f172a;
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Slide Mode (Clean 16:9 Screenshot Mode) */
+    body.slide-mode { background-color: #ffffff; }
+    body.slide-mode .hide-in-slide { display: none !important; }
+    body.slide-mode .slide-container {
+      max-width: 1600px; margin: 0 auto; padding: 20px 32px !important;
+      background: #ffffff; box-shadow: none !important; border: none !important;
+    }
+
+    @keyframes dashFlow { to { stroke-dashoffset: -24; } }
+    .flow-line-active { stroke-dasharray: 6 6; animation: dashFlow 0.9s linear infinite; }
+
+    .arch-card { transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; }
+    .arch-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.1); }
+    .arch-card.dimmed { opacity: 0.25; filter: grayscale(60%); transform: scale(0.98); }
+    .arch-card.highlighted { ring-width: 3px; box-shadow: 0 12px 28px -6px rgba(37, 99, 235, 0.22); }
+    .arch-card.selected-node { outline: 3px solid #2563eb; outline-offset: 2px; }
+
+    .feature-chip { transition: all 0.18s ease; cursor: pointer; }
+    .feature-chip:hover { transform: translateY(-2px); }
+    .feature-chip.dimmed-chip { opacity: 0.22; filter: grayscale(80%); }
+    
+    /* Utility for proper direction in tables */
+    .dir-ltr { direction: ltr; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <button id="exitSlideModeBtn" onclick="toggleSlideMode()" class="hidden fixed bottom-5 left-5 z-50 bg-slate-900/90 hover:bg-slate-900 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-xl flex items-center gap-2 border border-slate-700 backdrop-blur">
+    <span>خروج از حالت اسلاید (Esc)</span>
+    <span class="bg-slate-700 px-1.5 py-0.5 rounded text-[10px]">✕</span>
+  </button>
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="hide-in-slide sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white font-black text-lg shadow-sm">N</div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-sm sm:text-base font-extrabold text-slate-900">معماری و اکوسیستم ابزارهای شبکه ابری</h1>
+            <span class="bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-bold px-2 py-0.5 rounded-full">Product Benchmark</span>
+          </div>
+          <p class="text-xs text-slate-500">مقایسه ۶ پرووایدر جهانی و آروان + کالبدشکافی ساختار پارس‌پک</p>
+        </div>
+      </div>
+      <div class="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
+        <button onclick="switchMainTab('tab-system')" id="btn-tab-system" class="main-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-blue-700 shadow-sm">۱. دیاگرام زنجیره شبکه (اسلاید ۲)</button>
+        <button onclick="switchMainTab('tab-matrix')" id="btn-tab-matrix" class="main-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900">۲. نقشه ۲۴ قابلیت بازار (اسلاید ۵)</button>
+        <button onclick="switchMainTab('tab-providers')" id="btn-tab-providers" class="main-tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900">۳. کالبدشکافی ۷ پرووایدر</button>
+      </div>
+      <button onclick="toggleSlideMode()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl flex items-center gap-2 transition-all">
+        <span>حالت اسلاید ۱۶:۹</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 sm:px-6 py-5 slide-container">
+
+    <!-- ================= TAB 1: SYSTEM ARCHITECTURE ================= -->
+    <section id="tab-system" class="space-y-4">
+      <div class="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm flex flex-wrap justify-between gap-4">
+        <div>
+          <span class="bg-blue-600 text-white text-[11px] font-extrabold px-2.5 py-0.5 rounded-md">اسلاید ۲ ارائه</span>
+          <h2 class="text-lg sm:text-2xl font-black text-slate-900 mt-1">ابزارهای شبکه یک زنجیره به‌هم‌پیوسته‌اند</h2>
+          <p class="text-xs sm:text-sm text-slate-600">پاسخ به دو سوال اصلی: ابزارها چطور با هم کار می‌کنند و هر محصول به کدام ابزار نیاز دارد؟</p>
+        </div>
+        <div class="flex gap-2 bg-slate-50 p-2.5 rounded-xl border text-xs">
+          <span class="font-bold text-slate-700 ml-1">۴ نقش:</span>
+          <span class="px-2 py-1 rounded bg-emerald-50 text-emerald-800 font-bold">اشاره‌گر (DNS)</span>
+          <span class="px-2 py-1 rounded bg-amber-50 text-amber-800 font-bold">چسب منبع (IP و FW)</span>
+          <span class="px-2 py-1 rounded bg-purple-50 text-purple-800 font-bold">واسطه ترافیک (LB/CDN)</span>
+          <span class="px-2 py-1 rounded bg-blue-50 text-blue-800 font-bold">محیط (VPC)</span>
+        </div>
+      </div>
+
+      <div class="hide-in-slide bg-white rounded-xl p-3 border shadow-sm flex gap-2 overflow-x-auto">
+        <span class="text-xs font-extrabold text-slate-700 shrink-0 whitespace-nowrap mt-1">فیلتر مسیر:</span>
+        <button onclick="setTrafficFlow('all')" id="flow-btn-all" class="flow-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white whitespace-nowrap">همه اتصالات</button>
+        <button onclick="setTrafficFlow('public')" id="flow-btn-public" class="flow-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 whitespace-nowrap">۱. ورودی عمومی</button>
+        <button onclick="setTrafficFlow('edge')" id="flow-btn-edge" class="flow-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 whitespace-nowrap">۲. ورودی از لبه</button>
+        <button onclick="setTrafficFlow('internal')" id="flow-btn-internal" class="flow-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 whitespace-nowrap">۳. داخل VPC</button>
+        <button onclick="setTrafficFlow('nat')" id="flow-btn-nat" class="flow-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 whitespace-nowrap">۴. خروجی امن (NAT)</button>
+        <button onclick="setTrafficFlow('hybrid')" id="flow-btn-hybrid" class="flow-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 whitespace-nowrap">۵. اتصال سازمانی</button>
+      </div>
+
+      <div id="active-flow-banner" class="hidden bg-slate-900 text-white rounded-xl p-3.5 flex gap-3">
+        <span id="flow-badge-title" class="bg-blue-500/30 text-blue-200 text-xs font-extrabold px-2 py-1 rounded"></span>
+        <div id="flow-chain-steps" class="flex flex-wrap gap-2 text-xs font-bold"></div>
+      </div>
+
+      <div id="diagram-canvas-wrapper" class="relative bg-white rounded-2xl border p-4 sm:p-6 overflow-hidden min-h-[500px]">
+        <svg id="system-svg-layer" class="hidden xl:block absolute inset-0 w-full h-full pointer-events-none z-0"></svg>
+
+        <div class="relative z-10 grid grid-cols-1 xl:grid-cols-12 gap-6">
+          
+          <!-- Column 1: Entry & Edge -->
+          <div class="xl:col-span-4 flex flex-col bg-slate-50/80 rounded-2xl p-4 border space-y-3">
+            <div class="border-b pb-2"><h3 class="text-sm font-black">لایه ۱: آدرس‌دهی و لبه</h3></div>
+            
+            <div id="node-dns" onclick="selectSystemNode('dns')" class="arch-card bg-white rounded-xl p-3 border-2 border-emerald-400">
+              <div class="flex justify-between">
+                <span class="w-8 h-8 rounded bg-emerald-100 text-emerald-700 flex justify-center items-center font-bold text-xs">DNS</span>
+                <span class="text-[10px] font-extrabold bg-slate-900 text-white px-2 py-0.5 rounded">📍 منوی مرکزی</span>
+              </div>
+              <h4 class="font-extrabold text-sm mt-2">DNS و مدیریت دامنه</h4>
+              <p class="text-[11px] text-slate-500">ترجمه نام به آدرس IP، LB یا CDN</p>
+            </div>
+            
+            <div id="node-ip" onclick="selectSystemNode('ip')" class="arch-card bg-white rounded-xl p-3 border-2 border-amber-400">
+              <div class="flex justify-between">
+                <span class="w-8 h-8 rounded bg-amber-100 text-amber-700 flex justify-center items-center font-bold text-xs">IP</span>
+                <span class="text-[10px] font-extrabold bg-blue-700 text-white px-2 py-0.5 rounded">📍 مرکزی + سرویس</span>
+              </div>
+              <h4 class="font-extrabold text-sm mt-2">Reserved / Elastic IP</h4>
+              <p class="text-[11px] text-slate-500">آدرس ثابت برای Failover سریع</p>
+            </div>
+
+            <div id="node-cdn" onclick="selectSystemNode('cdn')" class="arch-card bg-white rounded-xl p-3 border-2 border-purple-400">
+              <div class="flex justify-between">
+                <span class="w-8 h-8 rounded bg-purple-100 text-purple-700 flex justify-center items-center font-bold text-xs">CDN</span>
+                <span class="text-[10px] font-extrabold bg-purple-800 text-white px-2 py-0.5 rounded">📍 مستقل / شبکه</span>
+              </div>
+              <h4 class="font-extrabold text-sm mt-2">CDN و امنیت لبه (WAF)</h4>
+              <p class="text-[11px] text-slate-500">کش و فیلتر درخواست‌های وب مخرب</p>
+            </div>
+
+            <div id="node-lb" onclick="selectSystemNode('lb')" class="arch-card bg-white rounded-xl p-3 border-2 border-purple-500">
+              <div class="flex justify-between">
+                <span class="w-8 h-8 rounded bg-purple-100 text-purple-800 flex justify-center items-center font-bold text-xs">LB</span>
+                <span class="text-[10px] font-extrabold bg-slate-900 text-white px-2 py-0.5 rounded">📍 مرکزی + K8s</span>
+              </div>
+              <h4 class="font-extrabold text-sm mt-2">Load Balancer (L7/L4)</h4>
+              <p class="text-[11px] text-slate-500">پخش ترافیک با Health Check</p>
+            </div>
+          </div>
+
+          <!-- Column 2: VPC Environment -->
+          <div class="xl:col-span-4 flex flex-col bg-blue-50/50 rounded-2xl p-4 border-2 border-dashed border-blue-400 space-y-3">
+            <div class="border-b border-blue-200 pb-2"><h3 class="text-sm font-black">لایه ۲: بستر خصوصی VPC</h3></div>
+            
+            <div id="node-fw" onclick="selectSystemNode('fw')" class="arch-card bg-white rounded-xl p-3 border-2 border-amber-500">
+              <div class="flex justify-between">
+                <span class="w-8 h-8 rounded bg-amber-100 text-amber-800 flex justify-center items-center font-bold text-xs">FW</span>
+                <span class="text-[10px] font-extrabold bg-blue-700 text-white px-2 py-0.5 rounded">📍 مرکزی + تب سرویس</span>
+              </div>
+              <h4 class="font-extrabold text-sm mt-2">Firewall / Security Groups</h4>
+              <p class="text-[11px] text-slate-500">کنترل پورت‌ها در لایه ۳/۴</p>
+            </div>
+
+            <div id="node-vpc" onclick="selectSystemNode('vpc')" class="arch-card bg-blue-50 rounded-xl p-4 border-2 border-blue-600 relative z-10">
+              <div class="flex justify-between">
+                <span class="w-8 h-8 rounded bg-blue-600 text-white flex justify-center items-center font-bold text-xs">VPC</span>
+                <span class="text-[10px] font-extrabold bg-blue-700 text-white px-2 py-0.5 rounded">📍 مرکزی + ویزارد</span>
+              </div>
+              <h4 class="font-extrabold text-sm mt-2 mb-2">Virtual Private Cloud</h4>
+              <div class="grid grid-cols-2 gap-2 text-[10px] text-slate-600 bg-white/60 p-2 rounded border">
+                <div>Subnets & Routing</div>
+                <div>Default VPC</div>
+                <div>Internal LB</div>
+                <div>Private DNS</div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-auto relative z-10">
+              <div id="node-nat" onclick="selectSystemNode('nat')" class="arch-card bg-white rounded p-2 border-2 border-blue-400">
+                <div class="text-[10px] font-bold">NAT Gateway</div>
+                <div class="text-[9px] text-slate-500">خروج امن به اینترنت</div>
+              </div>
+              <div id="node-hybrid" onclick="selectSystemNode('hybrid')" class="arch-card bg-slate-900 text-white rounded p-2 border-2 border-indigo-400">
+                <div class="text-[10px] font-bold">Peering / VPN</div>
+                <div class="text-[9px] text-slate-300">اتصال سازمانی</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 3: Products -->
+          <div class="xl:col-span-4 flex flex-col bg-slate-50/80 rounded-2xl p-4 border space-y-3">
+            <div class="border-b pb-2"><h3 class="text-sm font-black">لایه ۳: سرویس‌های متصل</h3></div>
+            
+            <div id="node-prod-server" onclick="selectSystemNode('prod-server')" class="arch-card bg-white rounded-xl p-3 border">
+              <div class="flex justify-between font-bold text-xs"><span class="bg-slate-900 text-white px-2 rounded">VM</span> <span>۵ ابزار شبکه</span></div>
+              <h4 class="font-extrabold text-sm mt-2">Cloud Server (خام‌ترین)</h4>
+              <div class="flex gap-1 mt-1"><span class="bg-blue-100 text-[9px] px-1 rounded">VPC, IP, FW, LB, DNS</span></div>
+            </div>
+
+            <div id="node-prod-db" onclick="selectSystemNode('prod-db')" class="arch-card bg-white rounded-xl p-3 border">
+              <div class="flex justify-between font-bold text-xs"><span class="bg-indigo-600 text-white px-2 rounded">DB</span> <span>ایزوله</span></div>
+              <h4 class="font-extrabold text-sm mt-2">Managed Database</h4>
+              <div class="flex gap-1 mt-1"><span class="bg-blue-100 text-[9px] px-1 rounded">VPC, DB FW</span></div>
+            </div>
+
+            <div id="node-prod-k8s" onclick="selectSystemNode('prod-k8s')" class="arch-card bg-white rounded-xl p-3 border">
+              <div class="flex justify-between font-bold text-xs"><span class="bg-blue-600 text-white px-2 rounded">K8s</span> <span>اتوماسیون</span></div>
+              <h4 class="font-extrabold text-sm mt-2">Kubernetes</h4>
+              <div class="flex gap-1 mt-1"><span class="bg-blue-100 text-[9px] px-1 rounded">VPC, Auto LB</span></div>
+            </div>
+            
+            <hr>
+
+            <div id="node-prod-storage" onclick="selectSystemNode('prod-storage')" class="arch-card bg-white rounded-xl p-3 border">
+              <h4 class="font-extrabold text-sm">Object Storage</h4>
+              <div class="flex gap-1 mt-1"><span class="bg-emerald-100 text-[9px] px-1 rounded">DNS + Bucket FW</span></div>
+            </div>
+
+            <div id="node-prod-paas" onclick="selectSystemNode('prod-paas')" class="arch-card bg-white rounded-xl p-3 border">
+              <h4 class="font-extrabold text-sm">PaaS / Cloud Host</h4>
+              <div class="flex gap-1 mt-1"><span class="bg-emerald-100 text-[9px] px-1 rounded">فقط DNS</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inspector Panel -->
+      <div class="bg-white rounded-2xl border-2 border-blue-200 shadow-sm p-5 mt-4">
+        <div class="flex gap-3 mb-3 border-b pb-3">
+          <div id="insp-badge" class="w-10 h-10 rounded bg-blue-600 text-white flex justify-center items-center font-black">VPC</div>
+          <div>
+            <h3 id="insp-title" class="text-lg font-black">Virtual Private Cloud</h3>
+            <span id="insp-role" class="text-xs font-bold text-blue-700">محیط</span>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div class="bg-slate-50 p-3 rounded border"><h4 class="text-xs font-bold mb-1">۱. عملکرد فنی</h4><p id="insp-mechanism" class="text-[11px]"></p></div>
+          <div class="bg-slate-50 p-3 rounded border"><h4 class="text-xs font-bold mb-1">۲. تفاوت رقبا</h4><p id="insp-providers" class="text-[11px]"></p></div>
+          <div class="bg-amber-50 p-3 rounded border"><h4 class="text-xs font-bold mb-1 text-amber-900">۳. وضعیت پارس‌پک</h4><p id="insp-parspack" class="text-[11px] text-amber-900"></p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 2: FEATURES MATRIX ================= -->
+    <section id="tab-matrix" class="hidden space-y-4">
+      <div class="bg-white rounded-2xl p-5 border shadow-sm">
+        <span class="bg-indigo-600 text-white text-[11px] font-extrabold px-2 py-0.5 rounded">اسلاید ۵</span>
+        <h2 class="text-lg sm:text-2xl font-black mt-1">ماتریس ۲۴ قابلیت شبکه: پارس‌پک در VPC شکاف دارد</h2>
+        <div class="flex gap-2 mt-2">
+          <span class="bg-emerald-100 text-emerald-900 text-xs px-2 py-1 rounded font-bold">✓ پارس‌پک دارد (۱۳)</span>
+          <span class="bg-amber-100 text-amber-900 text-xs px-2 py-1 rounded font-bold">~ جزئی (۱)</span>
+          <span class="bg-rose-50 border border-rose-300 text-rose-900 text-xs px-2 py-1 rounded font-bold">✗ ندارد (۱۰)</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <div class="xl:col-span-9 flex flex-col gap-4">
+          
+          <div class="bg-white rounded-2xl p-4 border">
+            <h3 class="font-black text-sm mb-3">طبقه ۱: آدرس، نام و ترافیک لبه (نقطه قوت پارس‌پک)</h3>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div class="bg-slate-50 p-2 rounded border"><h4 class="font-bold text-xs mb-2">DNS</h4><div id="cat-names" class="space-y-1"></div></div>
+              <div class="bg-slate-50 p-2 rounded border"><h4 class="font-bold text-xs mb-2">IP</h4><div id="cat-addresses" class="space-y-1"></div></div>
+              <div class="bg-slate-50 p-2 rounded border col-span-2 md:col-span-1"><h4 class="font-bold text-xs mb-2">LB & CDN</h4><div id="cat-traffic" class="space-y-1"></div></div>
+              <div class="bg-slate-50 p-2 rounded border"><h4 class="font-bold text-xs mb-2">Security</h4><div id="cat-security" class="space-y-1"></div></div>
+            </div>
+          </div>
+
+          <div class="bg-blue-50/60 rounded-2xl p-4 border-2 border-dashed border-blue-500">
+            <h3 class="font-black text-sm mb-3 text-blue-900">طبقه ۲: شبکه خصوصی (VPC) - گلوگاه اصلی پارس‌پک</h3>
+            <div id="cat-vpc" class="grid grid-cols-2 md:grid-cols-5 gap-2"></div>
+          </div>
+
+          <div class="bg-slate-900 text-white rounded-2xl p-4 border">
+            <h3 class="font-black text-sm mb-3 text-purple-300">طبقه ۳: اتصال سازمانی (پله سوم بازار)</h3>
+            <div id="cat-hybrid" class="grid grid-cols-2 md:grid-cols-4 gap-2"></div>
+          </div>
+        </div>
+
+        <div class="xl:col-span-3">
+          <div class="bg-white rounded-2xl p-4 border mb-4">
+            <h3 class="font-black text-sm mb-3">امتیاز ۶ پرووایدر</h3>
+            <div id="sb-scores" class="space-y-3"></div>
+          </div>
+          <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 text-xs">
+            <div class="font-bold mb-2 text-indigo-900" id="feat-title">راهنما</div>
+            <div id="feat-desc">روی قابلیت‌های سمت راست کلیک کنید تا جزئیات پشتیبانی رقبا اینجا نمایش داده شود.</div>
+            <div id="feat-provs" class="mt-3 grid grid-cols-2 gap-1 font-bold"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= TAB 3: PROVIDERS ================= -->
+    <section id="tab-providers" class="hidden space-y-4">
+      <div class="bg-white rounded-xl p-3 border shadow-sm flex gap-2 overflow-x-auto">
+        <button onclick="selectProvider('Parspack')" id="prov-btn-Parspack" class="prov-btn px-3 py-1.5 rounded-lg text-xs font-black bg-rose-600 text-white whitespace-nowrap">★ پارس‌پک</button>
+        <button onclick="selectProvider('DigitalOcean')" id="prov-btn-DigitalOcean" class="prov-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 whitespace-nowrap">DigitalOcean</button>
+        <button onclick="selectProvider('Hetzner')" id="prov-btn-Hetzner" class="prov-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 whitespace-nowrap">Hetzner</button>
+        <button onclick="selectProvider('Vultr')" id="prov-btn-Vultr" class="prov-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 whitespace-nowrap">Vultr</button>
+        <button onclick="selectProvider('AWS')" id="prov-btn-AWS" class="prov-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 whitespace-nowrap">AWS</button>
+        <button onclick="selectProvider('GCP')" id="prov-btn-GCP" class="prov-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 whitespace-nowrap">GCP</button>
+        <button onclick="selectProvider('ArvanCloud')" id="prov-btn-ArvanCloud" class="prov-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 whitespace-nowrap">ArvanCloud</button>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <div class="xl:col-span-4 bg-slate-900 text-white rounded-2xl p-5 border flex flex-col gap-4">
+          <div>
+            <span id="pv-badge" class="text-[11px] font-extrabold border px-2 py-0.5 rounded-full"></span>
+            <h3 id="pv-name" class="text-xl font-black mt-2"></h3>
+            <p id="pv-desc" class="text-xs text-slate-400 mt-2 leading-relaxed"></p>
+          </div>
+          <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+            <div class="text-xs font-bold text-slate-400 mb-2">منوی اصلی:</div>
+            <div id="pv-tree" class="text-xs space-y-1"></div>
+          </div>
+          <div class="bg-blue-900/30 border border-blue-800 p-3 rounded-lg text-xs">
+            <div class="text-blue-300 font-bold mb-1">نکته کلیدی:</div>
+            <div id="pv-takeaway" class="text-blue-100"></div>
+          </div>
+        </div>
+
+        <div class="xl:col-span-8 bg-white rounded-2xl border overflow-hidden flex flex-col">
+          <div class="p-4 bg-slate-50 border-b font-black text-sm">مپینگ ابزارها به محصولات</div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-right text-xs">
+              <thead class="bg-slate-100 text-slate-700 border-b">
+                <tr>
+                  <th class="p-3">ابزار</th>
+                  <th class="p-3">مسیر منو</th>
+                  <th class="p-3">محصولات متصل</th>
+                  <th class="p-3">محدودیت و نکته فنی</th>
+                </tr>
+              </thead>
+              <tbody id="pv-tbody" class="divide-y"></tbody>
+            </table>
+          </div>
+          <div id="pv-diag" class="mt-auto p-4 border-t bg-slate-50 text-xs"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // --- APP DATA ---
+    const sNode = {
+      'dns': {b:'DNS', bc:'bg-emerald-600', t:'مدیریت DNS و دامنه', r:'اشاره‌گر', m:'منوی مرکزی', s:'ترجمه دامنه به آدرس بدون کنترل مستقیم روی سرور', me:'رکورد نگه می‌دارد (A, CNAME). برای ثبت، NS باید ست شود.', pr:'در ۵ رقیب منوی مرکزی است.', pp:'به ۶ محصول وصل است اما بین هاست و CDN تکرار شده.'},
+      'ip': {b:'IP', bc:'bg-amber-500', t:'Reserved / Elastic IP', r:'چسب اتصال', m:'مرکزی + سرور', s:'آدرس ثابت عمومی برای Failover بدون تغییر DNS.', me:'به سرور ابری متصل می‌شود و با خرابی سرور قابل جابه‌جایی است.', pr:'در AWS به NAT هم می‌چسبد، در Hetzner جابه‌جایی بین ریجن دارد.', pp:'فقط به محصول Server محدود شده است.'},
+      'cdn': {b:'CDN', bc:'bg-purple-600', t:'CDN و WAF', r:'لبه', m:'محصول مستقل', s:'فیلتر ترافیک لایه ۷ و کشینگ.', me:'اولین خط برخورد کاربر با شبکه، همراه با فیلتر وب.', pr:'معمولاً سرویس جدا یا زیر Network Services در GCP.', pp:'نقطه قوت پارس‌پک، اما LB و DNS داخل آن زندانی شده‌اند.'},
+      'lb': {b:'LB', bc:'bg-purple-700', t:'Load Balancer', r:'واسطه', m:'مرکزی', s:'پخش ترافیک با Health Check.', me:'لایه ۷ (HTTP) و لایه ۴ (TCP) دارد.', pr:'در Vultr مستقل، در DO شبکه‌ای، در AWS زیر EC2.', pp:'فقط داخل CDN و فقط لایه ۷ است.'},
+      'fw': {b:'FW', bc:'bg-amber-600', t:'Firewall', r:'چسب حفاظتی', m:'تب سرویس + مرکزی', s:'فیلتر پورت و IP لایه ۳/۴.', me:'روی کارت شبکه یا سطح VPC اعمال می‌شود.', pr:'در AWS اجباری، در Hetzner مستقل زیر Cloud.', pp:'با نام یکسان در سرور، CDN و استوریج تکرار شده.'},
+      'vpc': {b:'VPC', bc:'bg-blue-600', t:'شبکه خصوصی مجازی', r:'محیط / ریشه', m:'مرکزی + ویزارد ساخت', s:'بستر ارتباط داخلی با IP خصوصی.', me:'اگر Subnet داشته باشد، می‌توان NAT و Internal LB روی آن ساخت.', pr:'در AWS/GCP کاملاً بلوغ یافته با Default VPC.', pp:'فقط یک ارتباط ساده بین سرورهاست؛ بدون ساب‌نت و NAT.'},
+      'nat': {b:'NAT', bc:'bg-blue-500', t:'NAT Gateway', r:'خروجی', m:'زیر VPC', s:'خروج امن سرور خصوصی به اینترنت.', me:'از طریق Routing Table ترافیک را با IP خودش بیرون می‌فرستد.', pr:'۵ رقیب از ۶ رقیب دارند.', pp:'به دلیل نبود Subnet امکان ساخت ندارد.'},
+      'hybrid': {b:'HYB', bc:'bg-slate-900', t:'Peering / VPN', r:'سازمانی', m:'مرکزی', s:'اتصال دو شبکه ابری یا دیتاسنتر.', me:'فقط پرووایدرهای مقیاس بزرگ پشتیبانی می‌کنند.', pr:'AWS و GCP کامل، بقیه جزئی.', pp:'ندارد.'},
+      'prod-server': {b:'VM', bc:'bg-slate-900', t:'Cloud Server', r:'IaaS', m:'همه', s:'خام‌ترین محصول؛ نیاز به همه ابزارها دارد.', me:'...', pr:'...', pp:'قفل کننده VPC و IP.'},
+      'prod-db': {b:'DB', bc:'bg-indigo-600', t:'Managed DB', r:'PaaS', m:'VPC/FW', s:'فقط شبکه خصوصی می‌خواهد.', me:'...', pr:'...', pp:'بدون اتصال VPC.'},
+      'prod-k8s': {b:'K8s', bc:'bg-blue-600', t:'Kubernetes', r:'PaaS', m:'VPC/LB', s:'ارکستراسیون.', me:'...', pr:'...', pp:'...'},
+      'prod-storage': {b:'S3', bc:'bg-emerald-700', t:'Storage', r:'Edge', m:'DNS', s:'دامنه‌محور.', me:'...', pr:'...', pp:'...'},
+      'prod-paas': {b:'PaaS', bc:'bg-purple-700', t:'App Platform', r:'Edge', m:'DNS', s:'مخفی‌کننده شبکه.', me:'...', pr:'...', pp:'...'}
+    };
+
+    const fMatrix = [
+      {id:'f1', c:'names', n:'DNS Management', p:'Yes', sc:'۶ رقیب', d:'مدیریت رکورد A/CNAME', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f2', c:'names', n:'Domain Registration', p:'Yes', sc:'۲ رقیب', d:'خرید دامنه', pr:{DO:'No',AWS:'Yes',GCP:'Yes',Arvan:'No'}},
+      {id:'f3', c:'names', n:'Private DNS', p:'No', sc:'۲ رقیب', d:'DNS داخل VPC', pr:{DO:'Partial',AWS:'Yes',GCP:'Yes',Arvan:'No'}},
+      {id:'f4', c:'addresses', n:'Reserved IP', p:'Yes', sc:'۶ رقیب', d:'IP ثابت عمومی', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f5', c:'addresses', n:'IPv6', p:'Yes', sc:'۶ رقیب', d:'آدرس‌دهی نسل ۶', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f6', c:'addresses', n:'IPAM', p:'Yes', sc:'۶ رقیب', d:'مدیریت تخصیص IP', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f7', c:'traffic', n:'HTTP LB (L7)', p:'Yes', sc:'۶ رقیب', d:'توزیع ترافیک وب', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f8', c:'traffic', n:'Network LB (L4)', p:'No', sc:'۵ رقیب', d:'توزیع TCP/UDP', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'No'}},
+      {id:'f9', c:'traffic', n:'Health Checks', p:'Yes', sc:'۶ رقیب', d:'تست سلامت', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f10', c:'traffic', n:'Internal LB', p:'No', sc:'۴ رقیب', d:'توزیع داخل VPC', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'No'}},
+      {id:'f11', c:'traffic', n:'SSL / TLS', p:'Yes', sc:'۶ رقیب', d:'گواهی امنیتی', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f12', c:'traffic', n:'CDN', p:'Yes', sc:'۵ رقیب', d:'شبکه توزیع', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f13', c:'security', n:'Firewall', p:'Yes', sc:'۶ رقیب', d:'پورت و IP مجاز', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f14', c:'security', n:'WAF', p:'Yes', sc:'۳ رقیب', d:'فایروال اپ وب', pr:{DO:'No',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f15', c:'security', n:'DDoS Protection', p:'Yes', sc:'۴ رقیب', d:'دفع حمله', pr:{DO:'Partial',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f16', c:'vpc', n:'VPC', p:'Partial', sc:'۵ رقیب', d:'شبکه خصوصی', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'Partial'}},
+      {id:'f17', c:'vpc', n:'Private Network', p:'Yes', sc:'۶ رقیب', d:'ارتباط پایه سرورها', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f18', c:'vpc', n:'Default VPC', p:'No', sc:'۳ رقیب', d:'شبکه خودکار', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'No'}},
+      {id:'f19', c:'vpc', n:'Subnets & Routing', p:'No', sc:'۵ رقیب', d:'زیرشبکه و مسیردهی', pr:{DO:'Partial',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f20', c:'vpc', n:'NAT Gateway', p:'No', sc:'۵ رقیب', d:'خروج امن به اینترنت', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'Yes'}},
+      {id:'f21', c:'hybrid', n:'VPC Peering', p:'No', sc:'۳ رقیب', d:'اتصال دو ابر', pr:{DO:'Yes',AWS:'Yes',GCP:'Yes',Arvan:'No'}},
+      {id:'f22', c:'hybrid', n:'VPN', p:'No', sc:'۲ رقیب', d:'ارتباط سازمانی', pr:{DO:'Partial',AWS:'Yes',GCP:'Yes',Arvan:'No'}},
+      {id:'f23', c:'hybrid', n:'Private Service', p:'No', sc:'۲ رقیب', d:'اتصال خصوصی', pr:{DO:'No',AWS:'Yes',GCP:'Yes',Arvan:'No'}},
+      {id:'f24', c:'hybrid', n:'BGP', p:'No', sc:'۳ رقیب', d:'مسیردهی دینامیک', pr:{DO:'Partial',AWS:'Yes',GCP:'Yes',Arvan:'No'}}
+    ];
+
+    const pDeep = {
+      'Parspack': {
+        b: 'الگو: جزیره‌ای و تکرار در محصولات', bc: 'bg-rose-500/20 text-rose-300 border-rose-500', 
+        name: 'پارس‌پک (Parspack)', d: 'ابزارهای شبکه منوی مرکزی ندارند و هرکدام داخل یک محصول قفل یا تکرار شده‌اند.',
+        tree: ['🖥 Server: VPC, IP, Firewall', '☁️ Host: DNS (تکرار ۱)', '🌐 CDN: DNS (تکرار ۲), HTTP LB, WAF', '📦 Storage: Firewall (تکرار)'],
+        tk: 'اولویت ۱ دیزاین: یکپارچه‌سازی بخش DNS که به ۶ محصول وصل است و در ۲ جا تکرار شده.',
+        tools: [
+          {t:'VPC', l:'Server → Private', s:'فقط Server', n:'بدون Subnet و NAT'},
+          {t:'Elastic IP', l:'Server → IP', s:'فقط Server', n:'بدون اتصال به LB/NAT'},
+          {t:'DNS', l:'Host & CDN', s:'۶ محصول', n:'تکرار شده در دو پنل'},
+          {t:'Load Balancer', l:'CDN → LB', s:'Origin', n:'فقط HTTP (بدون لایه ۴)'},
+          {t:'Firewall', l:'Server, CDN, Storage', s:'۳ محصول', n:'نام یکسان با کارکرد متفاوت'}
+        ]
+      },
+      'DigitalOcean': {
+        b: 'الگو: Networking-Centric', bc: 'bg-blue-500/20 text-blue-300 border-blue-500', 
+        name: 'DigitalOcean', d: 'منوی مرکزی Networking با تب‌های اختصاصی.',
+        tree: ['🌐 Networking: VPC, IPs, Domains, LB, Firewalls', '☸️ Kubernetes: K8s Service LB, FW'],
+        tk: 'هر ابزاری که مرکزی است، هنگام ساخت در ویزارد سرور (Droplet) نیز قابل انتخاب است.',
+        tools: [
+          {t:'VPC', l:'Networking → VPC', s:'۵ سرویس', n:'دارای Default VPC'},
+          {t:'IP', l:'Networking → IPs', s:'Droplets', n:'فقط به Droplet می‌چسبد'},
+          {t:'DNS', l:'Networking → Domains', s:'Droplet, App, CDN', n:'بدون ثبت دامنه'},
+          {t:'LB', l:'Networking → LB', s:'Droplet, K8s', n:'مدیریت K8s LB توسط خود کلاستر'},
+          {t:'FW', l:'Networking → FW', s:'Droplet, DB', n:'Control Plane K8s جداست'}
+        ]
+      },
+      'AWS': {
+        b: 'الگو: Service-Family', bc: 'bg-indigo-500/20 text-indigo-300 border-indigo-500', 
+        name: 'Amazon Web Services', d: 'زیرساخت کامل توزیع شده بین VPC, EC2 و Route 53.',
+        tree: ['🌐 VPC: Subnets, NAT, Peering, IP, FW', '🖥 EC2: Load Balancers, IP (تکرار هوشمند), FW', '🧭 Route 53: DNS Public & Private'],
+        tk: 'AWS فایروال و IP را هم در منوی VPC و هم در EC2 قرار داده تا از هر دو جا مدیریت شوند (تکرار هوشمند، نه جزیره‌ای).',
+        tools: [
+          {t:'VPC', l:'VPC Dashboard', s:'اکثر سرویس‌ها', n:'۱۰۰٪ کامل در سطح Enterprise'},
+          {t:'IP', l:'VPC & EC2', s:'EC2, NAT, NLB', n:'پولی و IPv4'},
+          {t:'DNS', l:'Route 53', s:'اکثر سرویس‌ها', n:'Alias مستقیم به LB/S3'},
+          {t:'LB', l:'EC2 → LB', s:'EC2, ECS, EKS', n:'تفکیک دقیق ALB, NLB, GWLB'},
+          {t:'FW', l:'VPC & EC2 (Sec Groups)', s:'EC2, RDS, ELB', n:'متصل به کارت شبکه و اجباری'}
+        ]
+      },
+      'ArvanCloud': {
+        b: 'الگو: Product-Centric', bc: 'bg-purple-500/20 text-purple-300 border-purple-500', 
+        name: 'آروان‌کلود (ArvanCloud)', d: 'نزدیک‌ترین رقیب به پارس‌پک؛ DNS زیرمجموعه CDN است.',
+        tree: ['🌐 VPC: IP, NAT', '🚀 CDN: DNS, LB, WAF', '🖥 Cloud Servers: FW'],
+        tk: 'مزیت آروان به پارس‌پک این است که DNS فقط یکجا (CDN) است، و VPC آن دارای Subnet و NAT است.',
+        tools: [
+          {t:'VPC', l:'VPC', s:'فقط Server', n:'دارای NAT و Subnet'},
+          {t:'IP', l:'VPC', s:'Server, NAT', n:'محدود به زون'},
+          {t:'DNS', l:'CDN', s:'اکثر سرویس‌ها', n:'نقطه واحد مدیریت (بدون تکرار)'},
+          {t:'LB', l:'CDN', s:'Origin', n:'فقط HTTP'},
+          {t:'FW', l:'Server & CDN', s:'Server, CDN', n:'تفکیک L3 و WAF'}
+        ]
+      },
+      'Hetzner': {b:'...',bc:'',name:'Hetzner',d:'مانند DO اما فایروال به دلیل تک‌محصولی بودن زیر Cloud رفته.',tree:[],tk:'',tools:[]},
+      'Vultr': {b:'...',bc:'',name:'Vultr',d:'مانند DO اما LB به دلیل ماهیت محصولی کاملاً مستقل شده است.',tree:[],tk:'',tools:[]},
+      'GCP': {b:'...',bc:'',name:'Google Cloud',d:'تفکیک تمیز بین زیرساخت شبکه (VPC) و سرویس‌های ترافیک (Network Services).',tree:[],tk:'',tools:[]}
+    };
+
+    // --- LOGIC ---
+    let flow = 'all';
+    function switchMainTab(id) {
+      ['tab-system', 'tab-matrix', 'tab-providers'].forEach(t => {
+        document.getElementById(t).classList.toggle('hidden', t !== id);
+        const btn = document.getElementById('btn-' + t);
+        btn.className = t === id ? 'main-tab-btn px-3.5 py-2 rounded-lg text-sm font-bold bg-white text-blue-700' : 'main-tab-btn px-3.5 py-2 rounded-lg text-sm font-bold text-slate-600 hover:text-slate-900';
+      });
+      if(id === 'tab-system') setTimeout(drawLines, 50);
+    }
+
+    function toggleSlideMode() {
+      document.body.classList.toggle('slide-mode');
+      document.getElementById('exitSlideModeBtn').classList.toggle('hidden', !document.body.classList.contains('slide-mode'));
+      setTimeout(drawLines, 50);
+    }
+    window.addEventListener('keydown', (e) => { if(e.key==='Escape' && document.body.classList.contains('slide-mode')) toggleSlideMode(); });
+
+    function setTrafficFlow(f) {
+      flow = f;
+      document.querySelectorAll('.flow-btn').forEach(b => b.classList.replace('bg-blue-600', 'bg-slate-100'));
+      document.querySelectorAll('.flow-btn').forEach(b => b.classList.replace('text-white', 'text-slate-700'));
+      const active = document.getElementById('flow-btn-' + f);
+      active.classList.replace('bg-slate-100', 'bg-blue-600');
+      active.classList.replace('text-slate-700', 'text-white');
+
+      const flows = {
+        public: {n:['dns','ip','lb','fw','vpc','prod-server'], t:'ورودی عمومی', s:['کاربر','DNS','IP','LB','FW','Server']},
+        edge: {n:['dns','cdn','lb','fw','prod-server','prod-storage'], t:'ورودی لبه', s:['کاربر','DNS','CDN','LB','Origin']},
+        internal: {n:['vpc','fw','prod-server','prod-db','prod-k8s'], t:'داخل شبکه', s:['Server','VPC/Subnet','FW','DB']},
+        nat: {n:['prod-server','prod-k8s','vpc','nat','ip'], t:'خروج امن', s:['Server','VPC','NAT','اینترنت']},
+        hybrid: {n:['vpc','hybrid','prod-server','prod-db'], t:'سازمانی', s:['VPC','Peering/VPN','Cloud/On-Prem']}
+      };
+
+      const banner = document.getElementById('active-flow-banner');
+      const cards = document.querySelectorAll('#diagram-canvas-wrapper .arch-card');
+      
+      if(f === 'all') {
+        banner.classList.add('hidden');
+        cards.forEach(c => c.classList.remove('dimmed', 'highlighted'));
+      } else {
+        banner.classList.remove('hidden');
+        document.getElementById('flow-badge-title').innerText = flows[f].t;
+        document.getElementById('flow-chain-steps').innerHTML = flows[f].s.map((step, i) => `<span class="bg-white/10 px-2 py-1 rounded">${step}</span>${i < flows[f].s.length - 1 ? '<span class="mx-1">⟵</span>' : ''}`).join('');
+        
+        cards.forEach(c => {
+          const id = c.id.replace('node-','');
+          if(flows[f].n.includes(id)) {
+            c.classList.remove('dimmed'); c.classList.add('highlighted');
+          } else {
+            c.classList.add('dimmed'); c.classList.remove('highlighted');
+          }
+        });
+      }
+      drawLines();
+    }
+
+    function selectSystemNode(k) {
+      const d = sNode[k];
+      document.querySelectorAll('#diagram-canvas-wrapper .arch-card').forEach(c => c.classList.remove('selected-node'));
+      document.getElementById('node-'+k).classList.add('selected-node');
+      document.getElementById('insp-badge').innerText = d.b;
+      document.getElementById('insp-badge').className = `w-10 h-10 rounded text-white flex justify-center items-center font-black ${d.bc}`;
+      document.getElementById('insp-title').innerText = d.t;
+      document.getElementById('insp-role').innerText = d.r;
+      document.getElementById('insp-mechanism').innerText = d.me;
+      document.getElementById('insp-providers').innerText = d.pr;
+      document.getElementById('insp-parspack').innerText = d.pp;
+    }
+
+    function drawLines() {
+      const svg = document.getElementById('system-svg-layer');
+      const wrap = document.getElementById('diagram-canvas-wrapper');
+      if(!svg || !wrap || window.innerWidth < 1280) { if(svg) svg.innerHTML = ''; return; }
+      svg.innerHTML = '';
+      const rWrap = wrap.getBoundingClientRect();
+
+      const conns = [
+        {f:'node-dns', t:'node-ip', c:'#10b981', fl:['all','public']},
+        {f:'node-dns', t:'node-cdn', c:'#10b981', fl:['all','edge']},
+        {f:'node-ip', t:'node-fw', c:'#f59e0b', fl:['all','public']},
+        {f:'node-cdn', t:'node-lb', c:'#8b5cf6', fl:['all','edge']},
+        {f:'node-lb', t:'node-fw', c:'#8b5cf6', fl:['all','public','edge']},
+        {f:'node-fw', t:'node-prod-server', c:'#f59e0b', fl:['all','public','edge','internal']},
+        {f:'node-vpc', t:'node-prod-server', c:'#2563eb', fl:['all','public','internal','nat','hybrid']},
+        {f:'node-vpc', t:'node-prod-db', c:'#2563eb', fl:['all','internal','hybrid']},
+        {f:'node-nat', t:'node-ip', c:'#3b82f6', fl:['all','nat']}
+      ];
+
+      conns.forEach(cn => {
+        const from = document.getElementById(cn.f), to = document.getElementById(cn.t);
+        if(!from || !to) return;
+        const r1 = from.getBoundingClientRect(), r2 = to.getBoundingClientRect();
+        const x1 = r1.left - rWrap.left, y1 = r1.top + r1.height/2 - rWrap.top;
+        const x2 = r2.right - rWrap.left, y2 = r2.top + r2.height/2 - rWrap.top;
+        
+        const active = cn.fl.includes(flow);
+        const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        p.setAttribute('d', `M ${x1} ${y1} C ${(x1+x2)/2} ${y1}, ${(x1+x2)/2} ${y2}, ${x2} ${y2}`);
+        p.setAttribute('fill', 'none');
+        p.setAttribute('stroke', cn.c);
+        p.setAttribute('stroke-width', active && flow !== 'all' ? '3' : '1.5');
+        p.setAttribute('stroke-opacity', flow === 'all' ? '0.2' : (active ? '0.8' : '0.05'));
+        if(active && flow !== 'all') p.classList.add('flow-line-active');
+        svg.appendChild(p);
+      });
+    }
+    window.addEventListener('resize', drawLines);
+
+    function initMatrix() {
+      fMatrix.forEach(f => {
+        let sc = f.p === 'Yes' ? 'bg-emerald-50 border-emerald-300' : (f.p === 'Partial' ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200 opacity-60');
+        let ic = f.p === 'Yes' ? '✓' : (f.p === 'Partial' ? '~' : '✗');
+        let el = `<div onclick="showFeat('${f.id}')" class="p-2 border rounded cursor-pointer hover:shadow-sm ${sc}">
+          <div class="flex gap-2 font-bold text-xs"><span>${ic}</span> <span>${f.n}</span></div>
+        </div>`;
+        document.getElementById('cat-' + f.c).innerHTML += el;
+      });
+
+      const scores = [{n:'AWS', y:24, p:0}, {n:'GCP', y:24, p:0}, {n:'DO', y:16, p:5}, {n:'Vultr', y:15, p:3}, {n:'Arvan', y:14, p:1}, {n:'Hetzner', y:14, p:3}, {n:'Parspack', y:13, p:1, h:1}];
+      document.getElementById('sb-scores').innerHTML = scores.map(s => `
+        <div class="text-[11px] font-bold flex justify-between ${s.h ? 'bg-rose-50 p-1 rounded text-rose-900' : ''}">
+          <span>${s.n}</span> <span>${s.y} ✓ | ${s.p} ~</span>
+        </div>
+      `).join('');
+    }
+
+    function showFeat(id) {
+      const f = fMatrix.find(x => x.id === id);
+      document.getElementById('feat-title').innerText = f.n;
+      document.getElementById('feat-desc').innerText = f.d;
+      document.getElementById('feat-provs').innerHTML = Object.entries(f.pr).map(([k,v]) => `
+        <div class="p-1 border rounded bg-white flex justify-between">
+          <span>${k}</span> <span class="${v==='Yes'?'text-emerald-600':(v==='Partial'?'text-amber-500':'text-rose-500')}">${v}</span>
+        </div>
+      `).join('') + `<div class="p-1 border rounded bg-amber-50 flex justify-between col-span-2 border-amber-300"><span>Parspack</span> <span class="${f.p==='Yes'?'text-emerald-600':(f.p==='Partial'?'text-amber-500':'text-rose-500')}">${f.p}</span></div>`;
+    }
+
+    function selectProvider(k) {
+      const d = pDeep[k];
+      document.querySelectorAll('.prov-btn').forEach(b => {
+        b.className = 'prov-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100';
+        if(b.id === 'prov-btn-Parspack') b.classList.add('text-rose-700', 'bg-rose-50');
+      });
+      const act = document.getElementById('prov-btn-' + k);
+      act.className = `prov-btn px-3 py-1.5 rounded-lg text-xs font-black text-white ${k==='Parspack' ? 'bg-rose-600' : 'bg-blue-600'}`;
+
+      document.getElementById('pv-badge').className = `text-[11px] font-extrabold border px-2 py-0.5 rounded-full ${d.bc}`;
+      document.getElementById('pv-badge').innerText = d.b;
+      document.getElementById('pv-name').innerText = d.name;
+      document.getElementById('pv-desc').innerText = d.d;
+      document.getElementById('pv-tree').innerHTML = d.tree.map(t => `<div class="p-1 bg-slate-900 rounded mb-1">• ${t}</div>`).join('');
+      document.getElementById('pv-takeaway').innerText = d.tk;
+
+      if(d.tools.length > 0) {
+        document.getElementById('pv-tbody').innerHTML = d.tools.map(t => `
+          <tr class="hover:bg-slate-100">
+            <td class="p-3 font-bold">${t.t}</td>
+            <td class="p-3 dir-ltr">${t.l}</td>
+            <td class="p-3">${t.s}</td>
+            <td class="p-3 text-slate-500">${t.n}</td>
+          </tr>
+        `).join('');
+      } else {
+        document.getElementById('pv-tbody').innerHTML = `<tr><td colspan="4" class="p-5 text-center text-slate-400">به دلیل مشابهت الگو، جزئیات در شیت خلاصه شده است.</td></tr>`;
+      }
+    }
+
+    window.onload = () => {
+      selectSystemNode('vpc');
+      initMatrix();
+      showFeat('f19');
+      selectProvider('Parspack');
+      setTimeout(drawLines, 100);
+    };
+  </script>
+</body>
+</html>
